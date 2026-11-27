@@ -50,6 +50,14 @@ function ranshosting_valid_date($s) {
     return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
 }
 
+/** Move to the target month, clamping dates such as January 31 to its last day. */
+function ranshosting_renewal_end_date($base, $months) {
+    $date = new DateTimeImmutable($base, new DateTimeZone('UTC'));
+    $target = $date->modify('first day of this month')->modify('+' . (int) $months . ' months');
+    $day = min((int) $date->format('j'), (int) $target->format('t'));
+    return $target->format('Y-m-') . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+}
+
 /** Usernames and passwords: keep every character the person typed, only drop control characters. */
 function ranshosting_sanitize_secret($v) {
     return trim(preg_replace('/[\x00-\x1F\x7F]/u', '', (string) $v));
@@ -826,8 +834,8 @@ add_action('admin_post_rh_row_action', function () {
         $end    = ranshosting_get_meta($id, 'end_date');
         $cycle  = ranshosting_billing_cycles()[ranshosting_get_meta($id, 'billing_cycle', 'yearly')]['months'] ?? 12;
         $today  = wp_date('Y-m-d');
-        $base   = ($end && strtotime($end) >= strtotime($today)) ? $end : $today;
-        $new    = gmdate('Y-m-d', strtotime('+' . $cycle . ' months', strtotime($base)));
+        $base   = ranshosting_valid_date($end) && $end >= $today ? $end : $today;
+        $new    = ranshosting_renewal_end_date($base, $cycle);
         update_post_meta($id, '_rh_start_date', $base);
         update_post_meta($id, '_rh_end_date', $new);
         update_post_meta($id, '_rh_payment_status', 'Unpaid');

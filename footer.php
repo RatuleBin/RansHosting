@@ -31,21 +31,30 @@ $rh_wa    = ranshosting_wa_number();
       <button type="button" class="rh-btn rh-btn-wa rh-btn-block" onclick="rhSendWa()">Continue to WhatsApp</button>
     </div>
   </div>
-  <button type="button" class="rh-wa-float" id="rh-wa-toggle" aria-controls="rh-wa-box" aria-expanded="false" onclick="rhToggleWa()" aria-label="WhatsApp support">
+  <button type="button" class="rh-wa-float" id="rh-wa-toggle" aria-controls="rh-wa-box" aria-expanded="false" onclick="rhToggleWa(undefined, this)" aria-label="WhatsApp support">
     <svg class="rh-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>
     <span>WhatsApp support</span>
   </button>
 </div>
 
 <script>
-function rhToggleWa(force) {
+var rhWaOpener = null;
+function rhToggleWa(force, opener) {
   var box = document.getElementById('rh-wa-box');
-  if (typeof force === 'boolean') { box.classList.toggle('open', force); } else { box.classList.toggle('open'); }
-  var open = box.classList.contains('open');
   var toggle = document.getElementById('rh-wa-toggle');
+  var wasOpen = box.classList.contains('open');
+  var open = typeof force === 'boolean' ? force : !wasOpen;
+  if (open === wasOpen) return;
+
+  box.classList.toggle('open', open);
   toggle.setAttribute('aria-expanded', String(open));
-  if (open) document.getElementById('rh-wa-msg').focus();
-  else toggle.focus();
+  if (open) {
+    rhWaOpener = opener || document.activeElement;
+    document.getElementById('rh-wa-msg').focus();
+  } else {
+    (rhWaOpener && rhWaOpener.isConnected ? rhWaOpener : toggle).focus();
+    rhWaOpener = null;
+  }
 }
 document.querySelector('.rh-wa-widget').addEventListener('keydown', function (event) {
   if (event.key === 'Escape' && document.getElementById('rh-wa-box').classList.contains('open')) {
