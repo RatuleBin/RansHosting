@@ -17,20 +17,21 @@ $rh_wa    = ranshosting_wa_number();
 <div class="rh-wa-widget">
   <div class="rh-wa-box" id="rh-wa-box" role="dialog" aria-label="WhatsApp support">
     <div class="rh-wa-head">
-      <img class="rh-wa-avatar" src="https://ranstechdigital.com/wp-content/uploads/2026/11/ratul-bin-founder.jpg" alt="Ratul Bin, founder" width="44" height="44" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+      <img class="rh-wa-avatar" src="<?php echo esc_url(get_theme_file_uri('assets/ratul-bin.jpg')); ?>" alt="Ratul Bin, founder" width="52" height="52" loading="lazy" decoding="async" />
       <div class="rh-wa-heading">
         <strong>RansHosting support</strong>
-        <span>Talk to a real person · <?php echo esc_html(ranshosting_wa_display()); ?></span>
+        <span>Ratul Bin · Founder</span>
       </div>
       <button type="button" class="rh-wa-close" onclick="rhToggleWa(false)" aria-label="Close">✕</button>
     </div>
     <div class="rh-wa-body">
-      <label class="rh-sr" for="rh-wa-msg">Your message</label>
+      <p class="rh-wa-intro">Need help with your hosting or domain? Send us a message on WhatsApp.</p>
+      <label for="rh-wa-msg">Your message</label>
       <textarea id="rh-wa-msg" rows="3">Hello RansHosting support, I need help with my hosting/domain service.</textarea>
-      <button type="button" class="rh-btn rh-btn-wa rh-btn-block" onclick="rhSendWa()">Chat on WhatsApp</button>
+      <button type="button" class="rh-btn rh-btn-wa rh-btn-block" onclick="rhSendWa()">Continue to WhatsApp</button>
     </div>
   </div>
-  <button type="button" class="rh-wa-float" onclick="rhToggleWa()" aria-label="WhatsApp support">
+  <button type="button" class="rh-wa-float" id="rh-wa-toggle" aria-controls="rh-wa-box" aria-expanded="false" onclick="rhToggleWa()" aria-label="WhatsApp support">
     <svg class="rh-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>
     <span>WhatsApp support</span>
   </button>
@@ -40,8 +41,18 @@ $rh_wa    = ranshosting_wa_number();
 function rhToggleWa(force) {
   var box = document.getElementById('rh-wa-box');
   if (typeof force === 'boolean') { box.classList.toggle('open', force); } else { box.classList.toggle('open'); }
-  if (box.classList.contains('open')) { var t = document.getElementById('rh-wa-msg'); if (t) t.focus(); }
+  var open = box.classList.contains('open');
+  var toggle = document.getElementById('rh-wa-toggle');
+  toggle.setAttribute('aria-expanded', String(open));
+  if (open) document.getElementById('rh-wa-msg').focus();
+  else toggle.focus();
 }
+document.querySelector('.rh-wa-widget').addEventListener('keydown', function (event) {
+  if (event.key === 'Escape' && document.getElementById('rh-wa-box').classList.contains('open')) {
+    event.stopPropagation();
+    rhToggleWa(false);
+  }
+});
 function rhSendWa() {
   var msg = encodeURIComponent(document.getElementById('rh-wa-msg').value || '');
   window.open('https://wa.me/<?php echo esc_js($rh_wa); ?>?text=' + msg, '_blank', 'noopener');
