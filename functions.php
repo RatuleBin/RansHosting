@@ -124,22 +124,8 @@ add_action('wp_enqueue_scripts', function () {
     $style_path = get_stylesheet_directory() . '/style.css';
     $style_ver  = file_exists($style_path) ? filemtime($style_path) : RANSHOSTING_VERSION;
 
-    wp_enqueue_style(
-        'ranshosting-font',
-        'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap',
-        [],
-        null
-    );
-    wp_enqueue_style('ranshosting-style', get_stylesheet_directory_uri() . '/style.css', ['ranshosting-font'], $style_ver);
+    wp_enqueue_style('ranshosting-style', get_stylesheet_directory_uri() . '/style.css', [], $style_ver);
 }, 99);
-
-add_filter('wp_resource_hints', function ($urls, $relation) {
-    if ($relation === 'preconnect') {
-        $urls[] = 'https://fonts.googleapis.com';
-        $urls[] = ['href' => 'https://fonts.gstatic.com', 'crossorigin'];
-    }
-    return $urls;
-}, 10, 2);
 
 /* =========================================================================
    Custom post types: Clients and their Services
@@ -207,11 +193,11 @@ function ranshosting_admin_css() {
     ?>
     <style>
       .rh-admin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
-      .rh-admin-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 14px; }
+      .rh-admin-box { background: #f7faf5; border: 1px solid #dbe4d8; padding: 16px; border-radius: 14px; margin-bottom: 14px; }
       .rh-admin-box h4 { margin: 0 0 10px; font-size: 13px; color: #0f172a; }
       .rh-admin-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
       .rh-admin-field input, .rh-admin-field select, .rh-admin-field textarea { width: 100%; }
-      .rh-login { background: #fff; border: 1px solid #cbd5e1; border-left: 4px solid #d66b5d; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+      .rh-login { background: #fff; border: 1px solid #cbd5e1; border-left: 4px solid #508777; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
       .rh-login-foot { display: flex; justify-content: space-between; align-items: end; gap: 12px; }
       .rh-login-foot .rh-admin-field { flex: 1; }
       .rh-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }

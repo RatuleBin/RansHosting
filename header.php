@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 <head>
   <meta charset="<?php bloginfo('charset'); ?>" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#052a3c" />
+  <meta name="theme-color" content="#faf7f1" />
   <script>
     /* Apply the saved theme before first paint to avoid a flash. */
     (function () {
