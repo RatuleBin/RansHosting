@@ -183,7 +183,7 @@ $config = [
         <?php if ($selected_client !== ''): ?>
           Hello, <span class="rh-grad"><?php echo esc_html($selected_client); ?></span>
         <?php else: ?>
-          Hosting, domains and email, <span class="rh-grad">renewed on time</span>
+          Your hosting, <span class="rh-grad">all in one place</span>
         <?php endif; ?>
       </h1>
       <p class="rh-lede">

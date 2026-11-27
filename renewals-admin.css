@@ -38,3 +38,33 @@
 .rh-renewal-count { font-size: 34px; line-height: 1.25; font-variant-numeric: tabular-nums; }
 .rh-renewal-description { flex: 1; margin: 4px 0 16px; color: #50575e; }
 .rh-renewal-action { color: #135e96; font-weight: 600; text-decoration: underline; }
+
+/* Match the portal without restyling the rest of WordPress admin. */
+.rh-renewals {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #202b29;
+}
+.rh-renewals-header {
+    border: 1px solid #dbe4d8;
+    border-radius: 22px;
+    background: linear-gradient(130deg, #faf7f1, #e8f2ea);
+    color: #202b29;
+}
+.rh-renewals-header p { color: #455850; }
+.rh-renewals-header .button { border-color: #508777; border-radius: 12px; color: #305d50; background: #fff; }
+.rh-renewal-card {
+    --rh-accent: #38745f;
+    border: 1px solid #dbe4d8;
+    border-radius: 20px;
+    background: #fffdf9;
+}
+.rh-renewal-card--urgent { --rh-accent: #9b4141; }
+.rh-renewal-card--soon { --rh-accent: #805516; }
+.rh-renewal-card--billing { --rh-accent: #694779; }
+.rh-renewal-icon {
+    box-sizing: content-box;
+    padding: 9px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--rh-accent) 11%, #fff);
+}
+.rh-renewal-action { color: var(--rh-accent); }
