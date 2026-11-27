@@ -46,7 +46,8 @@ function ranshosting_get_meta($post_id, $key, $default = '') {
     return ($val === '' || $val === false) ? $default : $val;
 }
 function ranshosting_valid_date($s) {
-    return is_string($s) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $s) && strtotime($s) !== false;
+    if (!is_string($s) || !preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/D', $s, $parts)) return false;
+    return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
 }
 
 /** Usernames and passwords: keep every character the person typed, only drop control characters. */
@@ -662,42 +663,88 @@ add_filter('manage_edit-rans_hosting_service_sortable_columns', function ($cols)
     return $cols;
 });
 
-/* Filter the services list by client and by type. */
-add_action('restrict_manage_posts', function ($post_type) {
-    if ($post_type !== 'rans_hosting_service') return;
-    $cur = isset($_GET['rh_client_filter']) ? (int) $_GET['rh_client_filter'] : 0;
-    echo '<select name="rh_client_filter"><option value="">All clients</option>';
-    foreach (ranshosting_clients() as $c) {
-        echo '<option value="' . (int) $c->ID . '"' . selected($cur, $c->ID, false) . '>' . esc_html($c->post_title) . '</option>';
+/* Service list filters share the same options for rendering and validation. */
+function ranshosting_service_filters() {
+    return [
+        'rh_type_filter' => [__('All service types', 'ranshosting'), ranshosting_service_types()],
+        'rh_payment_filter' => [__('All payment statuses', 'ranshosting'), [
+            'Unpaid' => __('Unpaid', 'ranshosting'), 'Partial' => __('Partial', 'ranshosting'), 'Paid' => __('Paid', 'ranshosting'),
+        ]],
+        'rh_renewal_filter' => [__('All renewal dates', 'ranshosting'), [
+            'expired' => __('Expired', 'ranshosting'), 'upcoming' => __('Due within 45 days', 'ranshosting'),
+            'undated' => __('No renewal date', 'ranshosting'),
+        ]],
+    ];
+}
+
+function ranshosting_service_filter_value($name) {
+    return isset($_GET[$name]) && is_string($_GET[$name]) ? wp_unslash($_GET[$name]) : '';
+}
+
+add_action('restrict_manage_posts', function ($post_type, $which) {
+    if ($post_type !== 'rans_hosting_service' || $which !== 'top') return;
+    $clients = [];
+    foreach (ranshosting_clients() as $client) $clients[$client->ID] = $client->post_title;
+    $filters = ['rh_client_filter' => [__('All clients', 'ranshosting'), $clients]] + ranshosting_service_filters();
+    foreach ($filters as $name => [$label, $options]) {
+        $current = ranshosting_service_filter_value($name);
+        echo '<label class="screen-reader-text" for="' . esc_attr($name) . '">' . esc_html($label) . '</label>';
+        echo '<select id="' . esc_attr($name) . '" name="' . esc_attr($name) . '"><option value="">' . esc_html($label) . '</option>';
+        foreach ($options as $value => $text) {
+            echo '<option value="' . esc_attr($value) . '"' . selected($current, $value, false) . '>' . esc_html($text) . '</option>';
+        }
+        echo '</select>';
     }
-    echo '</select>';
-    $t = isset($_GET['rh_type_filter']) ? sanitize_key($_GET['rh_type_filter']) : '';
-    echo '<select name="rh_type_filter"><option value="">All service types</option>';
-    foreach (ranshosting_service_types() as $k => $label) {
-        echo '<option value="' . esc_attr($k) . '"' . selected($t, $k, false) . '>' . esc_html($label) . '</option>';
-    }
-    echo '</select>';
-});
+}, 10, 2);
 
 add_action('pre_get_posts', function ($q) {
-    if (!is_admin() || !$q->is_main_query()) return;
-    $pt = $q->get('post_type');
+    global $pagenow;
+    if (!is_admin() || $pagenow !== 'edit.php' || !$q->is_main_query() || $q->get('post_type') !== 'rans_hosting_service') return;
 
-    if ($pt === 'rans_hosting_service') {
-        $mq = [];
-        if (!empty($_GET['rh_client_filter'])) $mq[] = ['key' => '_rh_client_id', 'value' => (int) $_GET['rh_client_filter']];
-        if (!empty($_GET['rh_type_filter']))   $mq[] = ['key' => '_rh_service_type', 'value' => sanitize_key($_GET['rh_type_filter'])];
-        if ($mq) $q->set('meta_query', $mq);
+    $mq = [];
+    $client = ranshosting_service_filter_value('rh_client_filter');
+    if (ctype_digit($client) && (int) $client > 0) $mq[] = ['key' => '_rh_client_id', 'value' => (int) $client];
+    $type = ranshosting_service_filter_value('rh_type_filter');
+    if (isset(ranshosting_service_types()[$type])) $mq[] = ['key' => '_rh_service_type', 'value' => $type];
 
-        $ob = $q->get('orderby');
-        if ($ob === 'rh_ends' || ($ob === '' && !isset($_GET['orderby']))) {
-            $q->set('meta_key', '_rh_end_date');
-            $q->set('orderby', 'meta_value');
-            if (!isset($_GET['order'])) $q->set('order', 'ASC');
-        } elseif ($ob === 'rh_client') {
-            $q->set('meta_key', '_rh_owner');
-            $q->set('orderby', 'meta_value');
-        }
+    $payment = ranshosting_service_filter_value('rh_payment_filter');
+    if (in_array($payment, ['Paid', 'Unpaid', 'Partial'], true)) {
+        $clause = ['key' => '_rh_payment_status', 'value' => $payment];
+        $mq[] = $payment === 'Unpaid' ? ['relation' => 'OR', $clause,
+            ['key' => '_rh_payment_status', 'value' => ''],
+            ['key' => '_rh_payment_status', 'compare' => 'NOT EXISTS'],
+        ] : $clause;
+    }
+
+    $renewal = ranshosting_service_filter_value('rh_renewal_filter');
+    $today = current_datetime()->setTime(0, 0);
+    if ($renewal === 'expired') {
+        $mq[] = ['key' => '_rh_end_date', 'value' => $today->format('Y-m-d'), 'compare' => '<', 'type' => 'DATE'];
+        $mq[] = ['key' => '_rh_end_date', 'value' => '', 'compare' => '!='];
+    } elseif ($renewal === 'upcoming') {
+        $mq[] = ['key' => '_rh_end_date', 'value' => [$today->format('Y-m-d'), $today->modify('+45 days')->format('Y-m-d')], 'compare' => 'BETWEEN', 'type' => 'DATE'];
+    } elseif ($renewal === 'undated') {
+        $mq[] = ['relation' => 'OR',
+            ['key' => '_rh_end_date', 'value' => ''],
+            ['key' => '_rh_end_date', 'compare' => 'NOT EXISTS'],
+        ];
+    }
+
+    // Include missing metadata when sorting, so new or incomplete services stay visible.
+    $order = $q->get('orderby');
+    if ($order === 'rh_ends' || $order === 'rh_client' || ($order === '' && !isset($_GET['orderby']))) {
+        $key = $order === 'rh_client' ? '_rh_owner' : '_rh_end_date';
+        $mq[] = ['relation' => 'OR',
+            'rh_sort' => ['key' => $key, 'compare' => 'EXISTS'],
+            ['key' => $key, 'compare' => 'NOT EXISTS'],
+        ];
+        $direction = strtoupper((string) $q->get('order')) === 'DESC' ? 'DESC' : 'ASC';
+        $q->set('orderby', ['rh_sort' => isset($_GET['order']) ? $direction : 'ASC', 'ID' => 'ASC']);
+    }
+    if ($mq) {
+        $existing = $q->get('meta_query');
+        if ($existing) $mq[] = $existing;
+        $q->set('meta_query', $mq);
     }
 });
 
