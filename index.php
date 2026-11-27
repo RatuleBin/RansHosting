@@ -195,7 +195,7 @@ $config = [
       </p>
     </div>
     <div class="rh-hero-actions">
-      <button type="button" class="rh-btn rh-btn-primary" onclick="rhToggleWa(true)">Talk to support</button>
+      <button type="button" class="rh-btn rh-btn-primary" onclick="rhToggleWa(true, this)">Talk to support</button>
       <a class="rh-btn rh-btn-outline" href="https://calendly.com/ranstechdigital/est" target="_blank" rel="noopener">Book a meeting</a>
       <?php if ($selected_client !== '' && $is_editor): ?>
         <a class="rh-btn rh-btn-ghost" href="<?php echo esc_url(home_url('/')); ?>">All clients</a>
@@ -985,7 +985,7 @@ document.addEventListener('click', (ev) => {
     const r = RH_DATA.find(x => x.id === Number(t.dataset.renew));
     if (!r) return;
     document.getElementById('rh-wa-msg').value = `Hello RansHosting, I would like to renew ${r.domain}${r.plan ? ' (' + r.plan + ')' : ''}. Term ends ${r.endDate}. Amount: ${rhMoney(r.currency, r.cost)}.`;
-    return rhToggleWa(true);
+    return rhToggleWa(true, t);
   }
   if (t.dataset.tab) { rhState.tab = t.dataset.tab; return rhRender(); }
   if (t.dataset.expand) { const id = Number(t.dataset.expand); return rhSetOpen(id, !rhState.open.has(id)); }
@@ -1023,7 +1023,9 @@ document.addEventListener('click', (ev) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { rhCloseInvoice(); rhHelp(false); rhToggleWa(false); document.querySelectorAll('.rh-more[open]').forEach(d => d.removeAttribute('open')); return; }
+  if (e.key === 'Escape') {
+    if ($('rh-wa-box').classList.contains('open')) { rhToggleWa(false); return; }
+    rhCloseInvoice(); rhHelp(false); document.querySelectorAll('.rh-more[open]').forEach(d => d.removeAttribute('open')); return; }
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
