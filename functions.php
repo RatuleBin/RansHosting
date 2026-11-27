@@ -457,37 +457,7 @@ function ranshosting_render_meta_box($post) {
       <?php endif; ?>
     </div>
 
-    <div class="rh-admin-box">
-      <h4>Service</h4>
-      <div class="rh-admin-grid">
-        <div class="rh-admin-field">
-          <label>Service type</label>
-          <select name="rh_service_type">
-            <?php foreach (ranshosting_service_types() as $k => $label): ?>
-              <option value="<?php echo esc_attr($k); ?>" <?php selected($m['service_type'] ?: 'hosting', $k); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="rh-admin-field"><label>Plan name</label><input type="text" name="rh_plan" value="<?php echo esc_attr($m['plan']); ?>" placeholder="Business Hosting" /></div>
-        <div class="rh-admin-field">
-          <label>Billing cycle</label>
-          <select name="rh_billing_cycle">
-            <?php foreach (ranshosting_billing_cycles() as $k => $c): ?>
-              <option value="<?php echo esc_attr($k); ?>" <?php selected($m['billing_cycle'] ?: 'yearly', $k); ?>><?php echo esc_html($c['label']); ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-      </div>
-      <div class="rh-admin-field" style="margin-bottom:12px;">
-        <label>Email accounts on this service (comma-separated)</label>
-        <input type="text" name="rh_domain_emails" value="<?php echo esc_attr($m['domain_emails']); ?>" placeholder="info@domain.com, billing@domain.com" />
-      </div>
-      <div class="rh-admin-field">
-        <label>Notes (shown on the portal card)</label>
-        <textarea name="rh_notes" rows="2"><?php echo esc_textarea($m['notes']); ?></textarea>
-      </div>
-      <?php ranshosting_render_sub_services($post->ID); ?>
-    </div>
+    <?php ranshosting_render_sub_services($post->ID); ?>
 
     <div class="rh-admin-box">
       <h4>Logins for this service</h4>
@@ -634,11 +604,6 @@ add_action('save_post_rans_hosting_service', function ($post_id) {
     if (!current_user_can('edit_post', $post_id)) return;
 
     $map = [
-        'service_type'   => 'sanitize_key',
-        'plan'           => 'sanitize_text_field',
-        'billing_cycle'  => 'sanitize_key',
-        'notes'          => 'sanitize_textarea_field',
-        'domain_emails'  => 'sanitize_text_field',
         'start_date'     => 'sanitize_text_field',
         'end_date'       => 'sanitize_text_field',
         'domain_expiry'  => 'sanitize_text_field',
@@ -663,8 +628,6 @@ add_action('save_post_rans_hosting_service', function ($post_id) {
 
         // Whitelist / format checks so bad input cannot break the portal.
         if (in_array($key, ['start_date', 'end_date', 'domain_expiry'], true) && $val !== '' && !ranshosting_valid_date($val)) continue;
-        if ($key === 'service_type' && !isset(ranshosting_service_types()[$val])) $val = 'hosting';
-        if ($key === 'billing_cycle' && !isset(ranshosting_billing_cycles()[$val])) $val = 'yearly';
         if ($key === 'ssl_status' && !in_array($val, ['active', 'expiring', 'none'], true)) $val = 'active';
         if ($key === 'payment_status' && !in_array($val, ['Paid', 'Unpaid', 'Partial'], true)) $val = 'Unpaid';
         if (in_array($key, ['cost', 'paid'], true)) $val = $val === '' ? '' : (string) max(0, (float) $val);
