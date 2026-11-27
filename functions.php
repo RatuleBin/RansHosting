@@ -671,7 +671,10 @@ function ranshosting_service_filters() {
             'Unpaid' => __('Unpaid', 'ranshosting'), 'Partial' => __('Partial', 'ranshosting'), 'Paid' => __('Paid', 'ranshosting'),
         ]],
         'rh_renewal_filter' => [__('All renewal dates', 'ranshosting'), [
-            'expired' => __('Expired', 'ranshosting'), 'upcoming' => __('Due within 45 days', 'ranshosting'),
+            'expired' => __('Expired', 'ranshosting'),
+            'week' => __('Due within 7 days', 'ranshosting'),
+            'month' => __('Due within 30 days', 'ranshosting'),
+            'upcoming' => __('Due within 45 days', 'ranshosting'),
             'undated' => __('No renewal date', 'ranshosting'),
         ]],
     ];
@@ -697,6 +700,33 @@ add_action('restrict_manage_posts', function ($post_type, $which) {
     }
 }, 10, 2);
 
+function ranshosting_service_billing_filters($payment, $renewal) {
+    $mq = [];
+    if (in_array($payment, ['Paid', 'Unpaid', 'Partial'], true)) {
+        $clause = ['key' => '_rh_payment_status', 'value' => $payment];
+        $mq[] = $payment === 'Unpaid' ? ['relation' => 'OR', $clause,
+            ['key' => '_rh_payment_status', 'value' => ''],
+            ['key' => '_rh_payment_status', 'compare' => 'NOT EXISTS'],
+        ] : $clause;
+    }
+
+    $windows = ['week' => 7, 'month' => 30, 'upcoming' => 45];
+    $today = current_datetime()->setTime(0, 0);
+    if ($renewal === 'expired') {
+        $mq[] = ['key' => '_rh_end_date', 'value' => $today->format('Y-m-d'), 'compare' => '<', 'type' => 'DATE'];
+        $mq[] = ['key' => '_rh_end_date', 'value' => '', 'compare' => '!='];
+    } elseif (isset($windows[$renewal])) {
+        $mq[] = ['key' => '_rh_end_date', 'value' => [$today->format('Y-m-d'), $today->modify('+' . $windows[$renewal] . ' days')->format('Y-m-d')], 'compare' => 'BETWEEN', 'type' => 'DATE'];
+    } elseif ($renewal === 'undated') {
+        $mq[] = ['relation' => 'OR',
+            ['key' => '_rh_end_date', 'value' => ''],
+            ['key' => '_rh_end_date', 'compare' => 'NOT EXISTS'],
+        ];
+    }
+
+    return $mq;
+}
+
 add_action('pre_get_posts', function ($q) {
     global $pagenow;
     if (!is_admin() || $pagenow !== 'edit.php' || !$q->is_main_query() || $q->get('post_type') !== 'rans_hosting_service') return;
@@ -707,28 +737,10 @@ add_action('pre_get_posts', function ($q) {
     $type = ranshosting_service_filter_value('rh_type_filter');
     if (isset(ranshosting_service_types()[$type])) $mq[] = ['key' => '_rh_service_type', 'value' => $type];
 
-    $payment = ranshosting_service_filter_value('rh_payment_filter');
-    if (in_array($payment, ['Paid', 'Unpaid', 'Partial'], true)) {
-        $clause = ['key' => '_rh_payment_status', 'value' => $payment];
-        $mq[] = $payment === 'Unpaid' ? ['relation' => 'OR', $clause,
-            ['key' => '_rh_payment_status', 'value' => ''],
-            ['key' => '_rh_payment_status', 'compare' => 'NOT EXISTS'],
-        ] : $clause;
-    }
-
-    $renewal = ranshosting_service_filter_value('rh_renewal_filter');
-    $today = current_datetime()->setTime(0, 0);
-    if ($renewal === 'expired') {
-        $mq[] = ['key' => '_rh_end_date', 'value' => $today->format('Y-m-d'), 'compare' => '<', 'type' => 'DATE'];
-        $mq[] = ['key' => '_rh_end_date', 'value' => '', 'compare' => '!='];
-    } elseif ($renewal === 'upcoming') {
-        $mq[] = ['key' => '_rh_end_date', 'value' => [$today->format('Y-m-d'), $today->modify('+45 days')->format('Y-m-d')], 'compare' => 'BETWEEN', 'type' => 'DATE'];
-    } elseif ($renewal === 'undated') {
-        $mq[] = ['relation' => 'OR',
-            ['key' => '_rh_end_date', 'value' => ''],
-            ['key' => '_rh_end_date', 'compare' => 'NOT EXISTS'],
-        ];
-    }
+    $mq = array_merge($mq, ranshosting_service_billing_filters(
+        ranshosting_service_filter_value('rh_payment_filter'),
+        ranshosting_service_filter_value('rh_renewal_filter')
+    ));
 
     // Include missing metadata when sorting, so new or incomplete services stay visible.
     $order = $q->get('orderby');
@@ -870,6 +882,55 @@ add_action('admin_menu', function () {
         'ranshosting_render_admin_settings_page'
     );
 });
+
+add_action('admin_menu', function () {
+    add_submenu_page(
+        'edit.php?post_type=rans_hosting_service',
+        __('Renewals & Payments', 'ranshosting'),
+        __('Renewals & Payments', 'ranshosting'),
+        'manage_options',
+        'ranshosting-renewals',
+        'ranshosting_render_renewals_dashboard'
+    );
+});
+
+function ranshosting_render_renewals_dashboard() {
+    if (!current_user_can('manage_options')) return;
+
+    $cards = [
+        [__('Overdue renewals', 'ranshosting'), 'expired', ''],
+        [__('Due within 7 days', 'ranshosting'), 'week', ''],
+        [__('Due within 30 days', 'ranshosting'), 'month', ''],
+        [__('Unpaid services', 'ranshosting'), '', 'Unpaid'],
+    ];
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('Renewals & Payments', 'ranshosting'); ?></h1>
+        <p><?php esc_html_e('These counts cover published services only. Select a card to view its matching services.', 'ranshosting'); ?></p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:1000px">
+            <?php foreach ($cards as [$label, $renewal, $payment]) :
+                $query = new WP_Query([
+                    'post_type' => 'rans_hosting_service',
+                    'post_status' => 'publish',
+                    'posts_per_page' => 1,
+                    'fields' => 'ids',
+                    'orderby' => 'none',
+                    'meta_query' => ranshosting_service_billing_filters($payment, $renewal),
+                ]);
+                $args = ['post_type' => 'rans_hosting_service', 'post_status' => 'publish'];
+                if ($renewal !== '') $args['rh_renewal_filter'] = $renewal;
+                if ($payment !== '') $args['rh_payment_filter'] = $payment;
+                $url = add_query_arg($args, admin_url('edit.php'));
+                ?>
+                <a href="<?php echo esc_url($url); ?>" style="display:block;background:#fff;border:1px solid #c3c4c7;padding:16px">
+                    <strong style="display:block;font-size:24px;line-height:1.4"><?php echo esc_html(number_format_i18n($query->found_posts)); ?></strong>
+                    <?php echo esc_html($label); ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php
+}
 
 function ranshosting_render_admin_settings_page() {
     if (!current_user_can('manage_options')) return;
