@@ -466,6 +466,8 @@ a:hover { text-decoration: underline; }
 .rh-wa-box.open { display: block; animation: rhPop 0.18s ease; }
 @keyframes rhPop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .rh-wa-head { background: linear-gradient(135deg, #075e54, #128c7e); color: #fff; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.rh-wa-avatar { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: center 35%; background: #075e54; border: 2px solid rgba(255, 255, 255, 0.65); }
+.rh-wa-heading { flex: 1; min-width: 0; }
 .rh-wa-head strong { display: block; font-size: 0.92rem; }
 .rh-wa-head span { font-size: 0.76rem; opacity: 0.92; }
 .rh-wa-close { background: none; border: 0; color: #fff; font-size: 1rem; cursor: pointer; padding: 0.2rem 0.4rem; }
