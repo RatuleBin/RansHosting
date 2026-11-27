@@ -462,16 +462,21 @@ a:hover { text-decoration: underline; }
 
 /* ---------- WhatsApp widget ---------- */
 .rh-wa-widget { position: fixed; bottom: 22px; right: 22px; z-index: 950; display: flex; flex-direction: column; align-items: flex-end; gap: 0.6rem; }
-.rh-wa-box { width: 320px; max-width: calc(100vw - 2rem); background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.6); }
+.rh-wa-box { width: 350px; max-width: calc(100vw - 44px); max-height: calc(100dvh - 100px); background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 20px; overflow: auto; display: none; box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.6); }
 .rh-wa-box.open { display: block; animation: rhPop 0.18s ease; }
 @keyframes rhPop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.rh-wa-head { background: linear-gradient(135deg, #075e54, #128c7e); color: #fff; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-.rh-wa-avatar { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: center 35%; background: #075e54; border: 2px solid rgba(255, 255, 255, 0.65); }
+.rh-wa-head { background: linear-gradient(135deg, #063c39, #09645b); color: #fff; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+.rh-wa-avatar { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: center; background: #075e54; border: 2px solid rgba(255, 255, 255, 0.65); }
 .rh-wa-heading { flex: 1; min-width: 0; }
 .rh-wa-head strong { display: block; font-size: 0.92rem; }
 .rh-wa-head span { font-size: 0.76rem; opacity: 0.92; }
 .rh-wa-close { background: none; border: 0; color: #fff; font-size: 1rem; cursor: pointer; padding: 0.2rem 0.4rem; }
-.rh-wa-body { padding: 0.9rem; }
+.rh-wa-close { min-width: 36px; min-height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); }
+.rh-wa-close:hover { background: rgba(255, 255, 255, 0.22); }
+.rh-wa-close:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.rh-wa-body { padding: 1rem; }
+.rh-wa-intro { margin: 0 0 0.85rem; color: var(--text-muted); font-size: 0.87rem; }
+.rh-wa-body label { display: block; margin-bottom: 0.35rem; font-weight: 700; font-size: 0.85rem; }
 .rh-wa-body textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 0.6rem 0.75rem; font-family: inherit; font-size: 0.86rem; margin-bottom: 0.65rem; resize: vertical; }
 .rh-wa-float { background: var(--whatsapp); color: #062b16; border: 0; border-radius: 999px; padding: 0.72rem 1.15rem; font-family: inherit; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 12px 26px rgba(37, 211, 102, 0.32); }
 .rh-wa-float:hover { filter: brightness(1.05); }
