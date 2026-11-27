@@ -109,6 +109,7 @@ foreach ($service_posts as $p) {
     $type      = ranshosting_get_meta($p->ID, 'service_type', 'hosting');
     $cycle     = ranshosting_get_meta($p->ID, 'billing_cycle', 'yearly');
 
+    $items = ranshosting_sub_services($p->ID);
     $row = [
         'id'            => $p->ID,
         'domain'        => get_the_title($p->ID),
@@ -116,11 +117,11 @@ foreach ($service_posts as $p) {
         'clientEmail'   => ranshosting_get_meta($p->ID, 'client_email'),
         'clientPhone'   => ranshosting_get_meta($p->ID, 'client_phone'),
         'type'          => $type,
-        'typeLabel'     => $types[$type] ?? ucfirst($type),
-        'plan'          => ranshosting_get_meta($p->ID, 'plan'),
+        'typeLabel'     => $items ? __('Service bundle', 'ranshosting') : ($types[$type] ?? ucfirst($type)),
+        'plan'          => $items ? '' : ranshosting_get_meta($p->ID, 'plan'),
         'cycleLabel'    => ($cycles[$cycle]['label'] ?? 'Yearly'),
-        'notes'         => ranshosting_get_meta($p->ID, 'notes'),
-        'emails'        => array_values(array_filter(array_map('trim', explode(',', (string) ranshosting_get_meta($p->ID, 'domain_emails'))))),
+        'notes'         => $items ? '' : ranshosting_get_meta($p->ID, 'notes'),
+        'emails'        => $items ? [] : array_values(array_filter(array_map('trim', explode(',', (string) ranshosting_get_meta($p->ID, 'domain_emails'))))),
         'clientId'      => (int) ranshosting_get_meta($p->ID, 'client_id'),
         'logins'        => $logins_out,
         'startDate'     => ranshosting_get_meta($p->ID, 'start_date'),
@@ -134,6 +135,7 @@ foreach ($service_posts as $p) {
         'cost'          => ranshosting_service_cost($p->ID),
         'subServices'   => array_map(function ($item) use ($types, $cycles) {
             return [
+                'type' => $item['type'],
                 'label' => $types[$item['type']] ?? $item['type'],
                 'name' => $item['name'],
                 'emails' => $item['emails'] ?? '',
@@ -143,7 +145,7 @@ foreach ($service_posts as $p) {
                 'end' => $item['end'],
                 'cost' => $item['cost'],
             ];
-        }, ranshosting_sub_services($p->ID)),
+        }, $items),
         'paid'          => (float) ranshosting_get_meta($p->ID, 'paid', 0),
         'currency'      => ranshosting_get_meta($p->ID, 'currency', '৳'),
         'paymentStatus' => ranshosting_get_meta($p->ID, 'payment_status', 'Unpaid'),
@@ -466,7 +468,7 @@ function rhServiceCard(r, open) {
   const domBadge = domDays === null ? '' : (domDays < 0
     ? ' <span class="rh-badge rh-badge-bad">expired</span>'
     : (domDays <= 30 ? ` <span class="rh-badge rh-badge-warn">${domDays}d left</span>` : ''));
-  const canCheck = r.type !== 'domain' && r.type !== 'email';
+  const canCheck = (r.subServices.length ? r.subServices.map(item => item.type) : [r.type]).some(type => type !== 'domain' && type !== 'email');
   const logins = r.logins || [];
 
   return `
@@ -515,13 +517,13 @@ function rhServiceCard(r, open) {
           ${canCheck ? `<div class="rh-cell-foot"><button type="button" class="rh-btn rh-btn-ghost rh-btn-xs" data-ping="${rhEsc(r.domain)}" data-demo="${r.demo ? '1' : ''}">${rhIcon('pulse')} Check uptime</button></div>` : ''}
         </div>
 
-        <div class="rh-cell">
+        ${r.subServices.length ? '' : `<div class="rh-cell">
           <h4>Email accounts (${(r.emails || []).length})</h4>
           ${(r.emails && r.emails.length)
             ? r.emails.map(e => `<div class="rh-mini"><div class="rh-cred-row"><span class="rh-mono">${rhEsc(e)}</span><span class="rh-cred-btns"><button type="button" class="rh-btn rh-btn-ghost rh-btn-xs" data-copy="${rhEsc(e)}" data-label="Email copied">Copy</button></span></div></div>`).join('')
               + (r.emails.length > 1 ? `<div class="rh-cell-foot"><button type="button" class="rh-btn rh-btn-ghost rh-btn-xs" data-copy="${rhEsc(r.emails.join(', '))}" data-label="All emails copied">Copy all</button></div>` : '')
             : '<span class="rh-muted">No email accounts on this service.</span>'}
-        </div>
+        </div>`}
 
         <div class="rh-cell">
           <h4>Logins (${logins.length})</h4>
@@ -535,7 +537,7 @@ function rhServiceCard(r, open) {
             <div class="rh-kv"><dt>Amount</dt><dd><strong>${rhEsc(rhMoney(r.currency, r.cost))}</strong></dd></div>
             <div class="rh-kv"><dt>Payment</dt><dd>${rhPayBadge(r)}</dd></div>
             ${r.paymentStatus === 'Partial' && r.paid > 0 ? `<div class="rh-kv"><dt>Paid so far</dt><dd>${rhEsc(rhMoney(r.currency, r.paid))}</dd></div><div class="rh-kv"><dt>Balance</dt><dd><strong>${rhEsc(rhMoney(r.currency, bal))}</strong></dd></div>` : ''}
-            <div class="rh-kv"><dt>Billing cycle</dt><dd>${rhEsc(r.cycleLabel)}</dd></div>
+            ${r.subServices.length ? '' : `<div class="rh-kv"><dt>Billing cycle</dt><dd>${rhEsc(r.cycleLabel)}</dd></div>`}
             <div class="rh-kv"><dt>Term ends</dt><dd>${rhEsc(r.endDate || '?')}</dd></div>
           </dl>
         </div>
@@ -598,9 +600,9 @@ function rhBase() {
   const q = ($('rh-search').value || '').toLowerCase().trim();
   return RH_DATA.filter(r => {
     if (ownerVal !== 'all' && r.owner !== ownerVal) return false;
-    if (typeVal !== 'all' && r.type !== typeVal) return false;
+    if (typeVal !== 'all' && !(r.subServices.length ? r.subServices.some(item => item.type === typeVal) : r.type === typeVal)) return false;
     if (!q) return true;
-    return [r.domain, r.owner, r.clientEmail, r.serverIp, r.registrar, r.plan, r.typeLabel, r.invoiceNo, ...(r.emails || []), ...(r.logins || []).map(l => l.label)].join(' ').toLowerCase().includes(q);
+    return [r.domain, r.owner, r.clientEmail, r.serverIp, r.registrar, r.plan, r.typeLabel, r.invoiceNo, ...(r.emails || []), ...r.subServices.flatMap(item => [item.label, item.name, item.emails, item.notes]), ...(r.logins || []).map(l => l.label)].join(' ').toLowerCase().includes(q);
   });
 }
 const rhTabMatch = (r, tab) => tab === 'all' || (tab === 'unpaid' ? r.paymentStatus !== 'Paid' : rhStatusKey(r.daysLeft) === tab);
