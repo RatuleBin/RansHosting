@@ -1,0 +1,68 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+$rh_wa    = ranshosting_wa_number();
+?>
+<div class="rh-dock" role="toolbar" aria-label="Page tools">
+  <button type="button" class="rh-icon-btn" id="rh-theme-toggle" aria-label="Switch between light and dark theme" title="Switch theme (t)">
+    <svg class="rh-i rh-i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
+    <svg class="rh-i rh-i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+  <button type="button" class="rh-icon-btn rh-backtop" id="rh-backtop" aria-label="Back to top" title="Back to top" hidden>
+    <svg class="rh-i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+  </button>
+</div>
+
+<div class="rh-wa-widget">
+  <div class="rh-wa-box" id="rh-wa-box" role="dialog" aria-label="WhatsApp support">
+    <div class="rh-wa-head">
+      <div>
+        <strong>RansHosting support</strong>
+        <span>Talk to a real person · <?php echo esc_html(ranshosting_wa_display()); ?></span>
+      </div>
+      <button type="button" class="rh-wa-close" onclick="rhToggleWa(false)" aria-label="Close">✕</button>
+    </div>
+    <div class="rh-wa-body">
+      <label class="rh-sr" for="rh-wa-msg">Your message</label>
+      <textarea id="rh-wa-msg" rows="3">Hello RansHosting support, I need help with my hosting/domain service.</textarea>
+      <button type="button" class="rh-btn rh-btn-wa rh-btn-block" onclick="rhSendWa()">Chat on WhatsApp</button>
+    </div>
+  </div>
+  <button type="button" class="rh-wa-float" onclick="rhToggleWa()" aria-label="WhatsApp support">
+    <svg class="rh-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>
+    <span>WhatsApp support</span>
+  </button>
+</div>
+
+<script>
+function rhToggleWa(force) {
+  var box = document.getElementById('rh-wa-box');
+  if (typeof force === 'boolean') { box.classList.toggle('open', force); } else { box.classList.toggle('open'); }
+  if (box.classList.contains('open')) { var t = document.getElementById('rh-wa-msg'); if (t) t.focus(); }
+}
+function rhSendWa() {
+  var msg = encodeURIComponent(document.getElementById('rh-wa-msg').value || '');
+  window.open('https://wa.me/<?php echo esc_js($rh_wa); ?>?text=' + msg, '_blank', 'noopener');
+}
+(function () {
+  var root = document.documentElement;
+  var tb = document.getElementById('rh-theme-toggle');
+  if (tb) tb.addEventListener('click', function () {
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('rh-theme', next); } catch (e) {}
+  });
+  var bt = document.getElementById('rh-backtop');
+  if (bt) {
+    var onScroll = function () { bt.hidden = window.scrollY < 700; };
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    bt.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+  }
+})();
+</script>
+<?php wp_footer(); ?>
+</body>
+</html>
