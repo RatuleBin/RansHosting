@@ -16,3 +16,9 @@ Set the dropdowns back to their **All…** options and click **Filter** to clear
 ### WordPress smoke test
 
 On a staging site, create services for two clients with paid, unpaid, and partial payments. Give them term end dates of yesterday, today, 45 days from today, and 46 days from today. Include a draft with no saved term date. Verify that each renewal filter returns the expected records, that payment and client filters narrow those results, and that the undated draft remains visible when sorting. Confirm the Clients screen and public portal are unaffected by the list filters.
+
+## Renewals & Payments dashboard
+
+Administrators can open **RansHosting → Renewals & Payments** for counts of overdue renewals, renewals due within 7 or 30 days, and unpaid services. Each card opens the corresponding filtered list of published services. Upcoming windows include today and the last day of the window; the 7-day count is also included in the 30-day count. Partial payments are not included in the Unpaid card and can be found using the **Partial** filter.
+
+On staging, add published services due today and in 7, 8, 30, and 31 days. Check that each card matches the result total on its linked screen, including when the count is zero. Verify that drafts do not affect counts and that accounts without `manage_options` cannot open the dashboard.
