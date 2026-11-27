@@ -17,7 +17,8 @@ $rh_wa    = ranshosting_wa_number();
 <div class="rh-wa-widget">
   <div class="rh-wa-box" id="rh-wa-box" role="dialog" aria-label="WhatsApp support">
     <div class="rh-wa-head">
-      <div>
+      <img class="rh-wa-avatar" src="https://ranstechdigital.com/wp-content/uploads/2026/11/ratul-bin-founder.jpg" alt="Ratul Bin, founder" width="44" height="44" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+      <div class="rh-wa-heading">
         <strong>RansHosting support</strong>
         <span>Talk to a real person · <?php echo esc_html(ranshosting_wa_display()); ?></span>
       </div>
