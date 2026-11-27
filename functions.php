@@ -698,6 +698,12 @@ add_action('restrict_manage_posts', function ($post_type, $which) {
         }
         echo '</select>';
     }
+    $names = array_keys($filters);
+    $active = array_filter(array_map('ranshosting_service_filter_value', $names), function ($value) { return $value !== ''; });
+    if ($active) {
+        $url = remove_query_arg(array_merge($names, ['paged']), wp_unslash($_SERVER['REQUEST_URI'] ?? 'edit.php?post_type=rans_hosting_service'));
+        echo '<a class="button" href="' . esc_url($url) . '">' . esc_html__('Clear filters', 'ranshosting') . '</a>';
+    }
 }, 10, 2);
 
 function ranshosting_service_billing_filters($payment, $renewal) {
@@ -884,7 +890,7 @@ add_action('admin_menu', function () {
 });
 
 add_action('admin_menu', function () {
-    add_submenu_page(
+    $screen = add_submenu_page(
         'edit.php?post_type=rans_hosting_service',
         __('Renewals & Payments', 'ranshosting'),
         __('Renewals & Payments', 'ranshosting'),
@@ -892,23 +898,38 @@ add_action('admin_menu', function () {
         'ranshosting-renewals',
         'ranshosting_render_renewals_dashboard'
     );
+    if ($screen) {
+        add_action('load-' . $screen, function () {
+            add_action('admin_enqueue_scripts', function () {
+                wp_enqueue_style('ranshosting-renewals', get_theme_file_uri('renewals-admin.css'), ['dashicons'], filemtime(get_theme_file_path('renewals-admin.css')));
+            });
+        });
+    }
 });
 
 function ranshosting_render_renewals_dashboard() {
     if (!current_user_can('manage_options')) return;
 
     $cards = [
-        [__('Overdue renewals', 'ranshosting'), 'expired', ''],
-        [__('Due within 7 days', 'ranshosting'), 'week', ''],
-        [__('Due within 30 days', 'ranshosting'), 'month', ''],
-        [__('Unpaid services', 'ranshosting'), '', 'Unpaid'],
+        ['urgent', 'warning', __('Overdue renewals', 'ranshosting'), __('Term ended before today.', 'ranshosting'), 'expired', ''],
+        ['soon', 'calendar-alt', __('Due within 7 days', 'ranshosting'), __('Renewals to follow up on this week.', 'ranshosting'), 'week', ''],
+        ['planned', 'calendar', __('Due within 30 days', 'ranshosting'), __('Includes the next 7 days.', 'ranshosting'), 'month', ''],
+        ['billing', 'money-alt', __('Unpaid services', 'ranshosting'), __('Does not include partial payments.', 'ranshosting'), '', 'Unpaid'],
     ];
+    $services_url = admin_url('edit.php?post_type=rans_hosting_service');
     ?>
-    <div class="wrap">
-        <h1><?php esc_html_e('Renewals & Payments', 'ranshosting'); ?></h1>
-        <p><?php esc_html_e('These counts cover published services only. Select a card to view its matching services.', 'ranshosting'); ?></p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:1000px">
-            <?php foreach ($cards as [$label, $renewal, $payment]) :
+    <div class="wrap rh-renewals">
+        <header class="rh-renewals-header">
+            <div>
+                <h1><?php esc_html_e('Renewals & Payments', 'ranshosting'); ?></h1>
+                <p><?php esc_html_e('See what needs attention and open the matching services in one click.', 'ranshosting'); ?></p>
+            </div>
+            <a class="button" href="<?php echo esc_url($services_url); ?>"><?php esc_html_e('View all services', 'ranshosting'); ?></a>
+        </header>
+        <section aria-labelledby="rh-renewals-heading">
+            <h2 id="rh-renewals-heading"><?php esc_html_e('Published services at a glance', 'ranshosting'); ?></h2>
+            <div class="rh-renewals-grid">
+            <?php foreach ($cards as [$tone, $icon, $label, $description, $renewal, $payment]) :
                 $query = new WP_Query([
                     'post_type' => 'rans_hosting_service',
                     'post_status' => 'publish',
@@ -922,12 +943,18 @@ function ranshosting_render_renewals_dashboard() {
                 if ($payment !== '') $args['rh_payment_filter'] = $payment;
                 $url = add_query_arg($args, admin_url('edit.php'));
                 ?>
-                <a href="<?php echo esc_url($url); ?>" style="display:block;background:#fff;border:1px solid #c3c4c7;padding:16px">
-                    <strong style="display:block;font-size:24px;line-height:1.4"><?php echo esc_html(number_format_i18n($query->found_posts)); ?></strong>
-                    <?php echo esc_html($label); ?>
+                <a class="rh-renewal-card rh-renewal-card--<?php echo esc_attr($tone); ?>" href="<?php echo esc_url($url); ?>">
+                    <span class="rh-renewal-icon dashicons dashicons-<?php echo esc_attr($icon); ?>" aria-hidden="true"></span>
+                    <h3><?php echo esc_html($label); ?></h3>
+                    <strong class="rh-renewal-count"><?php echo esc_html(number_format_i18n($query->found_posts)); ?></strong>
+                    <span class="rh-renewal-description"><?php echo esc_html($description); ?></span>
+                    <span class="rh-renewal-action"><?php
+                        echo $query->found_posts ? esc_html__('View matching services', 'ranshosting') : esc_html__('No matching services', 'ranshosting');
+                    ?> <span aria-hidden="true">→</span></span>
                 </a>
             <?php endforeach; ?>
-        </div>
+            </div>
+        </section>
     </div>
     <?php
 }
