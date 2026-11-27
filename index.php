@@ -136,6 +136,8 @@ foreach ($service_posts as $p) {
             return [
                 'label' => $types[$item['type']] ?? $item['type'],
                 'name' => $item['name'],
+                'emails' => $item['emails'] ?? '',
+                'notes' => $item['notes'] ?? '',
                 'cycle' => $cycles[$item['cycle']]['label'] ?? '',
                 'start' => $item['start'],
                 'end' => $item['end'],
@@ -542,7 +544,7 @@ function rhServiceCard(r, open) {
       ${r.subServices.length ? `<div class="rh-note rh-sub-service-breakdown">
         <h4>Sub-services</h4>
         <table class="rh-inv-table"><thead><tr><th scope="col">Service</th><th scope="col">Term</th><th scope="col" style="text-align:right">Amount</th></tr></thead>
-        <tbody>${rhSubServiceRows(r)}</tbody></table>
+        <tbody>${rhSubServiceRows(r, true)}</tbody></table>
         <p><strong>Total: ${rhEsc(rhMoney(r.currency, r.cost))}</strong> · Invoice ${rhEsc(r.invoiceNo)}</p>
         ${r.paymentLink && bal > 0 ? `<a class="rh-btn rh-btn-primary rh-btn-sm" href="${rhEsc(r.paymentLink)}" target="_blank" rel="noopener">Pay balance via renewal link</a>` : ''}
       </div>` : ''}
@@ -803,9 +805,12 @@ function rhSetOpen(id, open) {
 
 /* ---------- Invoice ---------- */
 let rhLastFocus = null;
-function rhSubServiceRows(r) {
+function rhSubServiceRows(r, showDetails = false) {
   return r.subServices.map(item => `<tr>
-    <td><strong>${rhEsc(item.label)}</strong>${item.name ? ': ' + rhEsc(item.name) : ''}<br><span class="rh-muted">${rhEsc(item.cycle)}</span></td>
+    <td><strong>${rhEsc(item.label)}</strong>${item.name ? ': ' + rhEsc(item.name) : ''}<br><span class="rh-muted">${rhEsc(item.cycle)}</span>
+      ${showDetails && item.emails ? `<div class="rh-muted">Email accounts: ${rhEsc(item.emails)}</div>` : ''}
+      ${showDetails && item.notes ? `<div class="rh-muted">${rhEsc(item.notes).replace(/\n/g, '<br>')}</div>` : ''}
+    </td>
     <td>${rhEsc([item.start, item.end].filter(Boolean).join(' → ') || '—')}</td>
     <td style="text-align:right">${rhEsc(rhMoney(r.currency, item.cost))}</td>
   </tr>`).join('');

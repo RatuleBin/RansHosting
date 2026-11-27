@@ -372,7 +372,7 @@ function ranshosting_render_sub_service_row($index, $item = []) {
             </label></div>
         <?php endforeach; ?>
         <?php foreach ([
-            'name' => [__('Description (optional)', 'ranshosting'), 'text'],
+            'name' => [__('Plan name', 'ranshosting'), 'text'],
             'start' => [__('Start date', 'ranshosting'), 'date'],
             'end' => [__('End date', 'ranshosting'), 'date'],
             'cost' => [__('Amount per term', 'ranshosting'), 'number'],
@@ -382,6 +382,16 @@ function ranshosting_render_sub_service_row($index, $item = []) {
               value="<?php echo esc_attr($item[$key] ?? ''); ?>" <?php if ($key === 'cost') echo 'min="0" max="999999999" step="0.01" required data-rh-item-cost'; ?> />
           </label></div>
         <?php endforeach; ?>
+      </div>
+      <div class="rh-admin-field">
+        <label><?php esc_html_e('Email accounts on this service (comma-separated)', 'ranshosting'); ?>
+          <input type="text" name="<?php echo esc_attr($prefix . '[emails]'); ?>" value="<?php echo esc_attr($item['emails'] ?? ''); ?>" placeholder="info@domain.com, billing@domain.com" />
+        </label>
+      </div>
+      <div class="rh-admin-field">
+        <label><?php esc_html_e('Notes (shown on the portal card)', 'ranshosting'); ?>
+          <textarea name="<?php echo esc_attr($prefix . '[notes]'); ?>" rows="2"><?php echo esc_textarea($item['notes'] ?? ''); ?></textarea>
+        </label>
       </div>
       <button type="button" class="button" data-rh-remove-item><?php esc_html_e('Remove sub-service', 'ranshosting'); ?></button>
     </fieldset>
@@ -476,6 +486,7 @@ function ranshosting_render_meta_box($post) {
         <label>Notes (shown on the portal card)</label>
         <textarea name="rh_notes" rows="2"><?php echo esc_textarea($m['notes']); ?></textarea>
       </div>
+      <?php ranshosting_render_sub_services($post->ID); ?>
     </div>
 
     <div class="rh-admin-box">
@@ -538,7 +549,6 @@ function ranshosting_render_meta_box($post) {
       </div>
     </div>
 
-    <?php ranshosting_render_sub_services($post->ID); ?>
     <div class="rh-admin-box">
       <h4>Main Service Invoice, Dates &amp; Payment</h4>
       <div class="rh-admin-grid">
@@ -678,6 +688,8 @@ add_action('save_post_rans_hosting_service', function ($post_id) {
                 'type' => isset($types[$type]) ? $type : 'hosting',
                 'cycle' => isset($cycles[$cycle]) ? $cycle : 'yearly',
                 'name' => sanitize_text_field($row['name'] ?? ''),
+                'emails' => implode(', ', array_filter(array_map('sanitize_email', array_map('trim', explode(',', $row['emails'] ?? ''))), 'is_email')),
+                'notes' => sanitize_textarea_field($row['notes'] ?? ''),
                 'start' => ranshosting_valid_date($start) ? $start : '',
                 'end' => ranshosting_valid_date($end) ? $end : '',
                 'cost' => round(min(999999999, max(0, (float) ($row['cost'] ?? 0))), 2),
