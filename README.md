@@ -25,6 +25,6 @@ On staging, add published services due today and in 7, 8, 30, and 31 days. Check
 
 ## Bundle multiple items on one invoice
 
-Edit a service and click **Add sub-service** to add separate hosting, domain, or email line items. Each line has its own billing cycle, term dates, and amount. The **Main Service Invoice, Dates & Payment** section totals the line items in one currency and holds the shared invoice number, payment status, and renewal payment link. Removing all line items restores standalone pricing. The main service end date still drives renewal filters and reminders; line-item dates do not schedule separate reminders.
+Edit a service and click **Add sub-service** inside the **Service** section to add separate hosting, domain, or email line items. Each line has its own type, plan name, billing cycle, email accounts, portal notes, term dates, and amount. The **Main Service Invoice, Dates & Payment** section totals the line items in one currency and holds the shared invoice number, payment status, and renewal payment link. Removing all line items restores standalone pricing. The main service end date still drives renewal filters and reminders; line-item dates do not schedule separate reminders.
 
 On staging, add hosting at 1200.50 and a domain at 800.25. Save and reload to verify the total is 2000.75 in the editor, Services list, portal, and invoice. Remove both items and verify the standalone price returns. Also check that marking a bundled invoice paid uses its combined total.
