@@ -131,7 +131,17 @@ foreach ($service_posts as $p) {
         'serverIp'      => ranshosting_get_meta($p->ID, 'server_ip'),
         'registrar'     => ranshosting_get_meta($p->ID, 'registrar'),
         'nameservers'   => ranshosting_get_meta($p->ID, 'nameservers'),
-        'cost'          => (float) ranshosting_get_meta($p->ID, 'cost', 0),
+        'cost'          => ranshosting_service_cost($p->ID),
+        'subServices'   => array_map(function ($item) use ($types, $cycles) {
+            return [
+                'label' => $types[$item['type']] ?? $item['type'],
+                'name' => $item['name'],
+                'cycle' => $cycles[$item['cycle']]['label'] ?? '',
+                'start' => $item['start'],
+                'end' => $item['end'],
+                'cost' => $item['cost'],
+            ];
+        }, ranshosting_sub_services($p->ID)),
         'paid'          => (float) ranshosting_get_meta($p->ID, 'paid', 0),
         'currency'      => ranshosting_get_meta($p->ID, 'currency', '৳'),
         'paymentStatus' => ranshosting_get_meta($p->ID, 'payment_status', 'Unpaid'),
@@ -336,7 +346,7 @@ $config = [
 <div class="rh-toast" id="rh-toast" role="status" aria-live="polite"></div>
 
 <script>
-const RH = <?php echo wp_json_encode($config); ?>;
+const RH = <?php echo wp_json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 const RH_DATA = RH.data;
 
 /* ---------- Utilities ---------- */
@@ -529,6 +539,13 @@ function rhServiceCard(r, open) {
         </div>
       </div>
 
+      ${r.subServices.length ? `<div class="rh-note rh-sub-service-breakdown">
+        <h4>Sub-services</h4>
+        <table class="rh-inv-table"><thead><tr><th scope="col">Service</th><th scope="col">Term</th><th scope="col" style="text-align:right">Amount</th></tr></thead>
+        <tbody>${rhSubServiceRows(r)}</tbody></table>
+        <p><strong>Total: ${rhEsc(rhMoney(r.currency, r.cost))}</strong> · Invoice ${rhEsc(r.invoiceNo)}</p>
+        ${r.paymentLink && bal > 0 ? `<a class="rh-btn rh-btn-primary rh-btn-sm" href="${rhEsc(r.paymentLink)}" target="_blank" rel="noopener">Pay balance via renewal link</a>` : ''}
+      </div>` : ''}
       ${r.notes ? `<div class="rh-note"><b>Note</b> ${rhEsc(r.notes)}</div>` : ''}
 
       <div class="rh-detail-foot">
@@ -786,6 +803,14 @@ function rhSetOpen(id, open) {
 
 /* ---------- Invoice ---------- */
 let rhLastFocus = null;
+function rhSubServiceRows(r) {
+  return r.subServices.map(item => `<tr>
+    <td><strong>${rhEsc(item.label)}</strong>${item.name ? ': ' + rhEsc(item.name) : ''}<br><span class="rh-muted">${rhEsc(item.cycle)}</span></td>
+    <td>${rhEsc([item.start, item.end].filter(Boolean).join(' → ') || '—')}</td>
+    <td style="text-align:right">${rhEsc(rhMoney(r.currency, item.cost))}</td>
+  </tr>`).join('');
+}
+
 function rhOpenInvoice(id) {
   const r = RH_DATA.find(x => x.id === id);
   if (!r) return;
@@ -812,11 +837,11 @@ function rhOpenInvoice(id) {
     </div>
     <table class="rh-inv-table">
       <thead><tr><th>Service</th><th>Term</th><th style="text-align:right;">Amount</th></tr></thead>
-      <tbody><tr>
+      <tbody>${r.subServices.length ? rhSubServiceRows(r) : `<tr>
         <td><strong>${rhEsc(r.typeLabel)}${r.plan ? ': ' + rhEsc(r.plan) : ''}</strong><br/><span class="rh-inv-sub">${rhEsc(r.domain)}, billed ${rhEsc(String(r.cycleLabel).toLowerCase())}</span></td>
         <td>${rhEsc(r.startDate)} to ${rhEsc(r.endDate)}</td>
         <td style="text-align:right;">${rhEsc(rhMoney(r.currency, r.cost))}</td>
-      </tr></tbody>
+      </tr>`}</tbody>
     </table>
     ${r.paymentStatus === 'Partial' && r.paid > 0 ? `
       <div class="rh-inv-line"><span>Total</span><span>${rhEsc(rhMoney(r.currency, r.cost))}</span></div>

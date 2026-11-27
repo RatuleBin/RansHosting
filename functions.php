@@ -342,6 +342,68 @@ function ranshosting_login_row_html($i, $l = []) {
     return ob_get_clean();
 }
 
+function ranshosting_sub_services($post_id) {
+    $items = ranshosting_get_meta($post_id, 'sub_services', []);
+    return is_array($items) ? $items : [];
+}
+
+function ranshosting_service_cost($post_id) {
+    $items = ranshosting_sub_services($post_id);
+    return $items ? round(array_sum(array_column($items, 'cost')), 2) : (float) ranshosting_get_meta($post_id, 'cost', 0);
+}
+
+function ranshosting_render_sub_service_row($index, $item = []) {
+    $prefix = 'rh_sub_services[' . $index . ']';
+    ?>
+    <fieldset class="rh-admin-box rh-sub-service">
+      <legend><?php esc_html_e('Sub-service', 'ranshosting'); ?></legend>
+      <div class="rh-admin-grid">
+        <?php foreach ([
+            'type' => [__('Service type', 'ranshosting'), ranshosting_service_types(), 'hosting'],
+            'cycle' => [__('Billing cycle', 'ranshosting'), array_map(function ($cycle) { return $cycle['label']; }, ranshosting_billing_cycles()), 'yearly'],
+        ] as $key => [$label, $options, $default]) :
+            ?>
+            <div class="rh-admin-field"><label><?php echo esc_html($label); ?>
+              <select name="<?php echo esc_attr($prefix . '[' . $key . ']'); ?>">
+                <?php foreach ($options as $value => $text) : ?>
+                  <option value="<?php echo esc_attr($value); ?>" <?php selected($item[$key] ?? $default, $value); ?>><?php echo esc_html($text); ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label></div>
+        <?php endforeach; ?>
+        <?php foreach ([
+            'name' => [__('Description (optional)', 'ranshosting'), 'text'],
+            'start' => [__('Start date', 'ranshosting'), 'date'],
+            'end' => [__('End date', 'ranshosting'), 'date'],
+            'cost' => [__('Amount per term', 'ranshosting'), 'number'],
+        ] as $key => [$label, $type]) : ?>
+          <div class="rh-admin-field"><label><?php echo esc_html($label); ?>
+            <input type="<?php echo esc_attr($type); ?>" name="<?php echo esc_attr($prefix . '[' . $key . ']'); ?>"
+              value="<?php echo esc_attr($item[$key] ?? ''); ?>" <?php if ($key === 'cost') echo 'min="0" max="999999999" step="0.01" required data-rh-item-cost'; ?> />
+          </label></div>
+        <?php endforeach; ?>
+      </div>
+      <button type="button" class="button" data-rh-remove-item><?php esc_html_e('Remove sub-service', 'ranshosting'); ?></button>
+    </fieldset>
+    <?php
+}
+
+function ranshosting_render_sub_services($post_id) {
+    $items = ranshosting_sub_services($post_id);
+    ?>
+    <div class="rh-admin-box">
+      <h4><?php esc_html_e('Sub-services', 'ranshosting'); ?></h4>
+      <p><?php esc_html_e('Add each hosting plan, domain registration, or email package separately. Amounts use the invoice currency below. Sub-service dates don’t change the main service’s reminder schedule.', 'ranshosting'); ?></p>
+      <input type="hidden" name="rh_sub_services_submitted" value="1" />
+      <div id="rh-sub-service-list">
+        <?php foreach ($items as $index => $item) ranshosting_render_sub_service_row($index, $item); ?>
+      </div>
+      <template id="rh-sub-service-template"><?php ranshosting_render_sub_service_row('__INDEX__'); ?></template>
+      <button type="button" class="button" id="rh-add-sub-service"><?php esc_html_e('Add sub-service', 'ranshosting'); ?></button>
+    </div>
+    <?php
+}
+
 function ranshosting_render_meta_box($post) {
     wp_nonce_field('ranshosting_save_meta', 'ranshosting_meta_nonce');
     $m = [];
@@ -476,8 +538,9 @@ function ranshosting_render_meta_box($post) {
       </div>
     </div>
 
+    <?php ranshosting_render_sub_services($post->ID); ?>
     <div class="rh-admin-box">
-      <h4>Billing, Dates &amp; Payment Link</h4>
+      <h4>Main Service Invoice, Dates &amp; Payment</h4>
       <div class="rh-admin-grid">
         <div class="rh-admin-field"><label>Term Start Date</label><input type="date" name="rh_start_date" value="<?php echo esc_attr($m['start_date']); ?>" required /></div>
         <div class="rh-admin-field"><label>Term End Date</label><input type="date" name="rh_end_date" value="<?php echo esc_attr($m['end_date']); ?>" required /></div>
@@ -489,7 +552,8 @@ function ranshosting_render_meta_box($post) {
             <option value="Partial" <?php selected($m['payment_status'], 'Partial'); ?>>Partial</option>
           </select>
         </div>
-        <div class="rh-admin-field"><label>Service Cost (per term)</label><input type="number" step="0.01" min="0" name="rh_cost" value="<?php echo esc_attr($m['cost']); ?>" required /></div>
+        <div class="rh-admin-field" id="rh-standalone-cost"><label>Service Cost (per term)<input type="number" step="0.01" min="0" name="rh_cost" value="<?php echo esc_attr($m['cost']); ?>" /></label></div>
+        <div class="rh-admin-field"><label for="rh-invoice-total">Invoice total</label><output id="rh-invoice-total" aria-live="polite"><?php echo esc_html(number_format_i18n(ranshosting_service_cost($post->ID), 2)); ?></output></div>
         <div class="rh-admin-field"><label>Amount paid so far (for Partial)</label><input type="number" step="0.01" min="0" name="rh_paid" value="<?php echo esc_attr($m['paid']); ?>" /></div>
         <div class="rh-admin-field">
           <label>Currency</label>
@@ -511,6 +575,44 @@ function ranshosting_render_meta_box($post) {
         Changing the end date starts a fresh reminder cycle automatically.
       </p>
     </div>
+    <script>
+    (() => {
+      const list = document.getElementById('rh-sub-service-list');
+      const add = document.getElementById('rh-add-sub-service');
+      const template = document.getElementById('rh-sub-service-template');
+      const manual = document.getElementById('rh-standalone-cost');
+      const cost = manual.querySelector('input');
+      const currency = document.querySelector('[name="rh_currency"]');
+      const total = document.getElementById('rh-invoice-total');
+      let index = list.children.length;
+      function update() {
+        const inputs = Array.from(list.querySelectorAll('[data-rh-item-cost]'));
+        manual.hidden = inputs.length > 0;
+        cost.disabled = inputs.length > 0;
+        cost.required = !inputs.length;
+        add.disabled = inputs.length >= 40;
+        const cents = (inputs.length ? inputs : [cost]).reduce((sum, input) => sum + Math.round((Number(input.value) || 0) * 100), 0);
+        total.value = currency.value + ' ' + (cents / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      add.addEventListener('click', () => {
+        if (list.children.length >= 40) return;
+        list.insertAdjacentHTML('beforeend', template.innerHTML.replace(/__INDEX__/g, String(index++)));
+        update();
+        list.lastElementChild.querySelector('select').focus();
+      });
+      list.addEventListener('click', event => {
+        const button = event.target.closest('[data-rh-remove-item]');
+        if (!button) return;
+        button.closest('.rh-sub-service').remove();
+        update();
+        add.focus();
+      });
+      list.addEventListener('input', update);
+      cost.addEventListener('input', update);
+      currency.addEventListener('change', update);
+      update();
+    })();
+    </script>
     <?php
 }
 
@@ -558,6 +660,30 @@ add_action('save_post_rans_hosting_service', function ($post_id) {
         if (in_array($key, ['cost', 'paid'], true)) $val = $val === '' ? '' : (string) max(0, (float) $val);
 
         update_post_meta($post_id, '_rh_' . $key, wp_slash($val));
+    }
+
+    if (isset($_POST['rh_sub_services_submitted'])) {
+        $rows = isset($_POST['rh_sub_services']) && is_array($_POST['rh_sub_services']) ? wp_unslash($_POST['rh_sub_services']) : [];
+        $items = [];
+        $types = ranshosting_service_types();
+        $cycles = ranshosting_billing_cycles();
+        foreach (array_slice($rows, 0, 40) as $row) {
+            if (!is_array($row)) continue;
+            $row = array_filter($row, 'is_string');
+            $type = $row['type'] ?? '';
+            $cycle = $row['cycle'] ?? '';
+            $start = $row['start'] ?? '';
+            $end = $row['end'] ?? '';
+            $items[] = [
+                'type' => isset($types[$type]) ? $type : 'hosting',
+                'cycle' => isset($cycles[$cycle]) ? $cycle : 'yearly',
+                'name' => sanitize_text_field($row['name'] ?? ''),
+                'start' => ranshosting_valid_date($start) ? $start : '',
+                'end' => ranshosting_valid_date($end) ? $end : '',
+                'cost' => round(min(999999999, max(0, (float) ($row['cost'] ?? 0))), 2),
+            ];
+        }
+        update_post_meta($post_id, '_rh_sub_services', wp_slash($items));
     }
 
     // Client: copy name, email and phone from the chosen client record.
@@ -641,7 +767,7 @@ add_action('manage_rans_hosting_service_posts_custom_column', function ($col, $p
         case 'rh_payment':
             $st  = ranshosting_get_meta($post_id, 'payment_status', 'Unpaid');
             $cur = ranshosting_get_meta($post_id, 'currency', '৳');
-            $cost = (float) ranshosting_get_meta($post_id, 'cost', 0);
+            $cost = ranshosting_service_cost($post_id);
             echo '<strong>' . esc_html($st) . '</strong><br>' . esc_html($cur . number_format_i18n($cost, $cost == floor($cost) ? 0 : 2));
             break;
         case 'rh_ssl':
@@ -794,7 +920,7 @@ add_action('manage_rans_client_posts_custom_column', function ($col, $post_id) {
             $owed = [];
             foreach ($svc as $s) {
                 $st = ranshosting_get_meta($s->ID, 'payment_status', 'Unpaid'); if ($st === 'Paid') continue;
-                $cost = (float) ranshosting_get_meta($s->ID, 'cost', 0); $paid = (float) ranshosting_get_meta($s->ID, 'paid', 0);
+                $cost = ranshosting_service_cost($s->ID); $paid = (float) ranshosting_get_meta($s->ID, 'paid', 0);
                 $due = $st === 'Partial' && $paid > 0 ? max(0, $cost - $paid) : $cost;
                 $c = ranshosting_get_meta($s->ID, 'currency', '৳'); $owed[$c] = ($owed[$c] ?? 0) + $due;
             }
@@ -828,7 +954,7 @@ add_action('admin_post_rh_row_action', function () {
     $msg = '';
     if ($do === 'paid') {
         update_post_meta($id, '_rh_payment_status', 'Paid');
-        update_post_meta($id, '_rh_paid', ranshosting_get_meta($id, 'cost', 0));
+        update_post_meta($id, '_rh_paid', ranshosting_service_cost($id));
         $msg = 'Marked as paid.';
     } elseif ($do === 'renew') {
         $end    = ranshosting_get_meta($id, 'end_date');
@@ -1135,7 +1261,7 @@ function ranshosting_send_reminder($post_id, $stage) {
     $domain    = get_the_title($post_id);
     $owner     = ranshosting_get_meta($post_id, 'owner', 'there');
     $cur       = ranshosting_get_meta($post_id, 'currency', '৳');
-    $cost      = (float) ranshosting_get_meta($post_id, 'cost', 0);
+    $cost      = ranshosting_service_cost($post_id);
     $paid      = (float) ranshosting_get_meta($post_id, 'paid', 0);
     $status    = ranshosting_get_meta($post_id, 'payment_status', 'Unpaid');
     $due       = $status === 'Partial' && $paid > 0 ? max(0, $cost - $paid) : $cost;

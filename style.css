@@ -548,3 +548,6 @@ a:hover { text-decoration: underline; }
   body.print-report .rh-group-actions { display: none !important; }
   body.print-report .rh-row { grid-template-columns: 1.5fr 1fr 0.8fr; cursor: default; }
 }
+
+.rh-sub-service-breakdown { overflow-x: auto; }
+.rh-sub-service-breakdown p { margin-top: 0.65rem; overflow-wrap: anywhere; }
