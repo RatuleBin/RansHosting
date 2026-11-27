@@ -22,3 +22,9 @@ On a staging site, create services for two clients with paid, unpaid, and partia
 Administrators can open **RansHosting → Renewals & Payments** for counts of overdue renewals, renewals due within 7 or 30 days, and unpaid services. Each card opens the corresponding filtered list of published services. Upcoming windows include today and the last day of the window; the 7-day count is also included in the 30-day count. Partial payments are not included in the Unpaid card and can be found using the **Partial** filter.
 
 On staging, add published services due today and in 7, 8, 30, and 31 days. Check that each card matches the result total on its linked screen, including when the count is zero. Verify that drafts do not affect counts and that accounts without `manage_options` cannot open the dashboard.
+
+## Bundle multiple items on one invoice
+
+Edit a service and click **Add sub-service** to add separate hosting, domain, or email line items. Each line has its own billing cycle, term dates, and amount. The **Main Service Invoice, Dates & Payment** section totals the line items in one currency and holds the shared invoice number, payment status, and renewal payment link. Removing all line items restores standalone pricing. The main service end date still drives renewal filters and reminders; line-item dates do not schedule separate reminders.
+
+On staging, add hosting at 1200.50 and a domain at 800.25. Save and reload to verify the total is 2000.75 in the editor, Services list, portal, and invoice. Remove both items and verify the standalone price returns. Also check that marking a bundled invoice paid uses its combined total.
