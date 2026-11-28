@@ -3,6 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+ranshosting_disable_portal_page_cache();
 get_header();
 
 $rh_logo = get_option('rh_logo_url', '');

@@ -128,6 +128,46 @@ add_action('after_setup_theme', function () {
 // The portal lists client data: keep it out of search engines.
 add_filter('wp_robots', 'wp_robots_no_robots');
 
+// Portal responses can vary by account and access link. Never store them in a shared page cache.
+function ranshosting_disable_portal_page_cache() {
+    if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
+    nocache_headers();
+    header('Cache-Control: private, no-store, max-age=0', true);
+    do_action('litespeed_control_set_nocache', 'RansHosting client portal');
+}
+
+function ranshosting_queue_portal_cache_purge() {
+    static $queued = false;
+    if ($queued) return;
+    $queued = true;
+    add_action('shutdown', function () {
+        $url = home_url('/');
+        if (function_exists('rocket_clean_files')) rocket_clean_files([$url]);
+        do_action('litespeed_purge_url', $url);
+        do_action('ranshosting_purge_portal_cache', $url);
+    });
+}
+
+function ranshosting_on_portal_record_change($post_id) {
+    if (in_array(get_post_type($post_id), ['rans_client', 'rans_hosting_service'], true)) {
+        ranshosting_queue_portal_cache_purge();
+    }
+}
+add_action('save_post_rans_client', 'ranshosting_on_portal_record_change');
+add_action('save_post_rans_hosting_service', 'ranshosting_on_portal_record_change');
+add_action('before_delete_post', 'ranshosting_on_portal_record_change');
+foreach (['added_post_meta', 'updated_post_meta', 'deleted_post_meta'] as $rh_meta_hook) {
+    add_action($rh_meta_hook, function ($meta_id, $post_id, $key) {
+        if (strpos($key, '_rh_') === 0) ranshosting_on_portal_record_change($post_id);
+    }, 10, 3);
+}
+add_action('updated_option', function ($option) {
+    if (strpos($option, 'rh_') === 0) ranshosting_queue_portal_cache_purge();
+});
+add_action('added_option', function ($option) {
+    if (strpos($option, 'rh_') === 0) ranshosting_queue_portal_cache_purge();
+});
+
 add_action('wp_enqueue_scripts', function () {
     $style_path = get_stylesheet_directory() . '/style.css';
     $style_ver  = file_exists($style_path) ? filemtime($style_path) : RANSHOSTING_VERSION;
