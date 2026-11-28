@@ -30,3 +30,9 @@ Edit a service and click **Add sub-service** in the **Sub-services** section to 
 On staging, add hosting at 1200.50 and a domain at 800.25. Save and reload to verify the total is 2000.75 in the editor, Services list, portal, and invoice. Remove both items and verify the standalone price returns. Also check that marking a bundled invoice paid uses its combined total.
 
 The editor uses sub-service rows for plan details, email accounts, and portal notes. Existing standalone services still show their saved details until you add a sub-service. Adding rows does not delete the original standalone metadata.
+
+## Portal caching
+
+RansHosting marks portal responses private and non-cacheable. Client, service, and portal settings changes automatically request a homepage purge through WP Rocket or LiteSpeed Cache when available; multiple changes in one request queue one purge. Other integrations can use the `ranshosting_purge_portal_cache` action, which receives the portal URL.
+
+After deploying this update, clear any existing page or CDN cache once. If a cache serves HTML before WordPress runs, configure it to bypass the portal URL, including its query-string variants; the theme cannot invalidate an independently managed host or CDN cache by itself. Static assets remain cacheable.
