@@ -243,6 +243,10 @@ function ranshosting_admin_css() {
       .rh-admin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
       .rh-admin-box { background: #f7faf5; border: 1px solid #dbe4d8; padding: 16px; border-radius: 14px; margin-bottom: 14px; }
       .rh-admin-box h4 { margin: 0 0 10px; font-size: 13px; color: #0f172a; }
+      .rh-sub-service { min-inline-size: 0; background: #fff; }
+      .rh-sub-service legend { font-weight: 600; padding: 0 .4em; }
+      .rh-sub-service > .rh-admin-field { margin-bottom: 10px; }
+      #rh-invoice-total { display: block; font-size: 1.25rem; font-weight: 700; line-height: 30px; }
       .rh-admin-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
       .rh-admin-field input, .rh-admin-field select, .rh-admin-field textarea { width: 100%; }
       .rh-login { background: #fff; border: 1px solid #cbd5e1; border-left: 4px solid #508777; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
@@ -396,7 +400,7 @@ function ranshosting_render_sub_service_row($index, $item = []) {
     $prefix = 'rh_sub_services[' . $index . ']';
     ?>
     <fieldset class="rh-admin-box rh-sub-service">
-      <legend><?php esc_html_e('Sub-service', 'ranshosting'); ?></legend>
+      <legend data-rh-item-title><?php esc_html_e('Sub-service', 'ranshosting'); ?></legend>
       <div class="rh-admin-grid">
         <?php foreach ([
             'type' => [__('Service type', 'ranshosting'), ranshosting_service_types(), 'hosting'],
@@ -445,11 +449,12 @@ function ranshosting_render_sub_services($post_id) {
       <h4><?php esc_html_e('Sub-services', 'ranshosting'); ?></h4>
       <p><?php esc_html_e('Add each hosting plan, domain registration, or email package separately. Amounts use the invoice currency below. Sub-service dates don’t change the main service’s reminder schedule.', 'ranshosting'); ?></p>
       <input type="hidden" name="rh_sub_services_submitted" value="1" />
-      <div id="rh-sub-service-list">
+      <p class="description" id="rh-sub-service-empty" <?php if ($items) echo 'hidden'; ?>><?php esc_html_e('No sub-services yet. Add one below or keep standalone pricing.', 'ranshosting'); ?></p>
+      <div id="rh-sub-service-list" data-row-label="<?php echo esc_attr(__('Sub-service', 'ranshosting')); ?>">
         <?php foreach ($items as $index => $item) ranshosting_render_sub_service_row($index, $item); ?>
       </div>
       <template id="rh-sub-service-template"><?php ranshosting_render_sub_service_row('__INDEX__'); ?></template>
-      <button type="button" class="button" id="rh-add-sub-service"><?php esc_html_e('Add sub-service', 'ranshosting'); ?></button>
+      <button type="button" class="button button-secondary" id="rh-add-sub-service"><?php esc_html_e('Add sub-service', 'ranshosting'); ?></button>
     </div>
     <?php
 }
@@ -604,9 +609,14 @@ function ranshosting_render_meta_box($post) {
       const cost = manual.querySelector('input');
       const currency = document.querySelector('[name="rh_currency"]');
       const total = document.getElementById('rh-invoice-total');
+      const empty = document.getElementById('rh-sub-service-empty');
       let index = list.children.length;
       function update() {
         const inputs = Array.from(list.querySelectorAll('[data-rh-item-cost]'));
+        empty.hidden = inputs.length > 0;
+        list.querySelectorAll('[data-rh-item-title]').forEach((title, i) => {
+          title.textContent = list.dataset.rowLabel + ' ' + (i + 1);
+        });
         manual.hidden = inputs.length > 0;
         cost.disabled = inputs.length > 0;
         cost.required = !inputs.length;

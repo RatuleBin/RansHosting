@@ -549,5 +549,11 @@ a:hover { text-decoration: underline; }
   body.print-report .rh-row { grid-template-columns: 1.5fr 1fr 0.8fr; cursor: default; }
 }
 
-.rh-sub-service-breakdown { overflow-x: auto; }
-.rh-sub-service-breakdown p { margin-top: 0.65rem; overflow-wrap: anywhere; }
+.rh-bundle { padding: 1rem clamp(.85rem, 3vw, 1.5rem); border-top: 1px solid var(--border); }
+.rh-bundle h4 { margin-bottom: .75rem; }
+.rh-bundle-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); gap: .65rem; list-style: none; }
+.rh-bundle-item { padding: .8rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-input); overflow-wrap: anywhere; }
+.rh-bundle-item-head, .rh-bundle-total { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem; }
+.rh-bundle-item-head { margin-bottom: .2rem; }
+.rh-bundle-note { margin-top: .35rem; white-space: pre-line; font-size: .85rem; }
+.rh-bundle-total { margin-top: .75rem; padding: .7rem .85rem; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
