@@ -544,13 +544,7 @@ function rhServiceCard(r, open) {
         </div>
       </div>
 
-      ${r.subServices.length ? `<div class="rh-note rh-sub-service-breakdown">
-        <h4>Sub-services</h4>
-        <table class="rh-inv-table"><thead><tr><th scope="col">Service</th><th scope="col">Term</th><th scope="col" style="text-align:right">Amount</th></tr></thead>
-        <tbody>${rhSubServiceRows(r, true)}</tbody></table>
-        <p><strong>Total: ${rhEsc(rhMoney(r.currency, r.cost))}</strong> · Invoice ${rhEsc(r.invoiceNo)}</p>
-        ${r.paymentLink && bal > 0 ? `<a class="rh-btn rh-btn-primary rh-btn-sm" href="${rhEsc(r.paymentLink)}" target="_blank" rel="noopener">Pay balance via renewal link</a>` : ''}
-      </div>` : ''}
+      ${r.subServices.length ? rhBundleDetails(r, bal) : ''}
       ${r.notes ? `<div class="rh-note"><b>Note</b> ${rhEsc(r.notes)}</div>` : ''}
 
       <div class="rh-detail-foot">
@@ -808,12 +802,28 @@ function rhSetOpen(id, open) {
 
 /* ---------- Invoice ---------- */
 let rhLastFocus = null;
-function rhSubServiceRows(r, showDetails = false) {
+function rhBundleDetails(r, balance) {
+  return `<section class="rh-bundle" aria-labelledby="rh-bundle-${r.id}">
+    <h4 id="rh-bundle-${r.id}">Sub-services (${r.subServices.length})</h4>
+    <ul class="rh-bundle-items">
+      ${r.subServices.map(item => `<li class="rh-bundle-item">
+        <div class="rh-bundle-item-head"><strong>${rhEsc(item.label)}</strong><b>${rhEsc(rhMoney(r.currency, item.cost))}</b></div>
+        ${item.name ? `<div>${rhEsc(item.name)}</div>` : ''}
+        <div class="rh-muted">${rhEsc(item.cycle)}${item.start ? ' · Starts ' + rhEsc(item.start) : ''}${item.end ? ' · Ends ' + rhEsc(item.end) : ''}</div>
+        ${item.emails ? `<div class="rh-muted">Email accounts: ${rhEsc(item.emails)}</div>` : ''}
+        ${item.notes ? `<div class="rh-bundle-note">${rhEsc(item.notes)}</div>` : ''}
+      </li>`).join('')}
+    </ul>
+    <div class="rh-bundle-total">
+      <div><span class="rh-muted">Invoice ${rhEsc(r.invoiceNo)}</span><br><strong>Total: ${rhEsc(rhMoney(r.currency, r.cost))}</strong></div>
+      ${r.paymentLink && balance > 0 ? `<a class="rh-btn rh-btn-primary rh-btn-sm" href="${rhEsc(r.paymentLink)}" target="_blank" rel="noopener">Pay ${rhEsc(rhMoney(r.currency, balance))}</a>` : ''}
+    </div>
+  </section>`;
+}
+
+function rhSubServiceRows(r) {
   return r.subServices.map(item => `<tr>
-    <td><strong>${rhEsc(item.label)}</strong>${item.name ? ': ' + rhEsc(item.name) : ''}<br><span class="rh-muted">${rhEsc(item.cycle)}</span>
-      ${showDetails && item.emails ? `<div class="rh-muted">Email accounts: ${rhEsc(item.emails)}</div>` : ''}
-      ${showDetails && item.notes ? `<div class="rh-muted">${rhEsc(item.notes).replace(/\n/g, '<br>')}</div>` : ''}
-    </td>
+    <td><strong>${rhEsc(item.label)}</strong>${item.name ? ': ' + rhEsc(item.name) : ''}<br><span class="rh-muted">${rhEsc(item.cycle)}</span></td>
     <td>${rhEsc([item.start, item.end].filter(Boolean).join(' → ') || '—')}</td>
     <td style="text-align:right">${rhEsc(rhMoney(r.currency, item.cost))}</td>
   </tr>`).join('');
